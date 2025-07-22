@@ -51,7 +51,25 @@ local util = {} do
 
     local TweenService = game:GetService("TweenService")
     function util.tween(instance, properties, duration)
-        TweenService:Create(instance, TweenInfo.new(duration, Enum.EasingStyle.Linear), properties):Play()
+        TweenService:Create(instance, TweenInfo.new(duration, Enum.EasingStyle.Cubic), properties):Play()
+    end
+
+    function util.CreateGlow(parent, color, size)
+        local size = size or UDim2.fromOffset(parent.AbsoluteSize.X + 20, parent.AbsoluteSize.Y + 20)
+        local glow, gradient = util.new("ImageLabel", {
+            Parent = parent,
+            Name = "GlowEffect",
+            Size = size,
+            Position = UDim2.fromOffset(-10, -10),
+            ZIndex = parent.ZIndex - 1,
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://5034873641", -- Radial gradient image
+            ImageColor3 = color,
+            ImageTransparency = 1, -- Start fully transparent
+            ScaleType = Enum.ScaleType.Slice,
+            SliceCenter = Rect.new(49, 49, 50, 50)
+        })
+        return glow
     end
 end
 
@@ -67,64 +85,42 @@ interactable.__index = interactable
 
 --//Theme
 local theme = getgenv().theme or {
-    -- Core backgrounds with subtle gradients and depth
-    BackColor = Color3.fromRGB(28, 30, 38),              -- Deeper, richer base
-    TopBar = Color3.fromRGB(35, 38, 48),                 -- Elevated header feel
-    UpperContainer = Color3.fromRGB(38, 42, 52),         -- Layered depth
-    InnerContainer = Color3.fromRGB(45, 48, 58),         -- Content container
+    -- Core Backgrounds
+    BackColor = Color3.fromRGB(18, 19, 22),              -- Near-black for high contrast
+    TopBar = Color3.fromRGB(24, 25, 28),                 -- Slightly lighter top bar
+    UpperContainer = Color3.fromRGB(30, 32, 36),         -- Main content panels
+    InnerContainer = Color3.fromRGB(38, 40, 45),         -- Inner containers, slightly lighter
     
-    -- Interactive elements with premium feel
-    InteractableBackground = Color3.fromRGB(42, 46, 58), -- Refined interaction base
-    InteractableOutline = Color3.fromRGB(85, 90, 105),   -- Softer, elegant outline
+    -- Interactive Elements
+    InteractableBackground = Color3.fromRGB(44, 46, 51), -- Base for buttons, sliders
+    InteractableOutline = Color3.fromRGB(60, 62, 68),    -- Subtle borders
     
-    -- Accent system with harmony
-    Accent = Color3.fromRGB(120, 140, 200),              -- More vibrant, balanced blue
-    AccentHover = Color3.fromRGB(140, 160, 220),         -- Lighter hover state
-    AccentPressed = Color3.fromRGB(100, 120, 180),       -- Darker pressed state
+    -- Accent System (Electric Cyan)
+    Accent = Color3.fromRGB(0, 225, 255),                -- Bright, electric cyan
+    AccentHover = Color3.fromRGB(120, 240, 255),         -- Lighter, softer hover
+    AccentPressed = Color3.fromRGB(0, 190, 215),         -- Deeper press color
+    Glow = Color3.fromRGB(0, 225, 255),                  -- Glow color, same as accent for consistency
+
+    -- Typography
+    TextColor = Color3.fromRGB(250, 250, 250),           -- Off-white, easier on the eyes
+    SubTextColor = Color3.fromRGB(160, 165, 175),        -- Readable secondary text
     
-    -- Tab system with better contrast
-    NotSelectedTab = Color3.fromRGB(55, 60, 75),         -- Better visibility
-    SelectedTab = Color3.fromRGB(65, 75, 95),            -- Clear selection state
+    -- Tabs
+    NotSelectedTab = Color3.fromRGB(44, 46, 51),         -- Unselected tab color
+    SelectedTab = Color3.fromRGB(55, 58, 64),            -- Selected tab bg color
     
-    -- Typography hierarchy
-    TextColor = Color3.fromRGB(245, 248, 252),           -- Pure, crisp white
-    SubTextColor = Color3.fromRGB(185, 190, 200),        -- Better readable secondary
-    DisabledText = Color3.fromRGB(130, 135, 145),        -- Disabled state
+    -- Buttons
+    ButtonTop = Color3.fromRGB(55, 58, 64),              -- Gradient top for buttons
+    ButtonBottom = Color3.fromRGB(48, 50, 55),           -- Gradient bottom for buttons
     
-    -- Button gradients for premium feel
-    ButtonTop = Color3.fromRGB(58, 65, 82),              -- Refined top layer
-    ButtonBottom = Color3.fromRGB(48, 55, 72),           -- Sophisticated bottom layer
-    ButtonHover = Color3.fromRGB(68, 75, 92),            -- Hover enhancement
+    -- Borders & Dividers
+    Border = Color3.fromRGB(50, 52, 58),                 -- Standard border
+    Divider = Color3.fromRGB(45, 47, 52),                -- Line dividers
     
-    -- Status and feedback colors
-    Success = Color3.fromRGB(72, 187, 120),              -- Fresh green
-    Warning = Color3.fromRGB(251, 191, 36),              -- Warm amber
-    Error = Color3.fromRGB(239, 68, 68),                 -- Clear red
-    Info = Color3.fromRGB(59, 130, 246),                 -- Clean blue
-    
-    -- Borders and dividers
-    Border = Color3.fromRGB(75, 80, 95),                 -- Subtle separation
-    BorderLight = Color3.fromRGB(95, 100, 115),          -- Lighter variant
-    Divider = Color3.fromRGB(65, 70, 85),                -- Section separation
-    
-    -- Shadow and depth (for transparency values)
-    ShadowColor = Color3.fromRGB(15, 18, 25),            -- Rich shadow base
-    OverlayColor = Color3.fromRGB(20, 23, 32),           -- Modal/overlay background
-    
-    -- Special elements
-    Highlight = Color3.fromRGB(155, 175, 255),           -- Selection highlight
-    SelectionBackground = Color3.fromRGB(45, 60, 85),    -- Selected item background
-    
-    -- Input fields
-    InputBackground = Color3.fromRGB(40, 44, 56),        -- Input field base
-    InputBorder = Color3.fromRGB(75, 80, 95),            -- Input border
-    InputFocus = Color3.fromRGB(120, 140, 200),          -- Focused input border
-    
-    -- Scrollbars and sliders
-    ScrollbarTrack = Color3.fromRGB(35, 38, 48),         -- Track background
-    ScrollbarThumb = Color3.fromRGB(85, 90, 105),        -- Thumb color
-    ScrollbarThumbHover = Color3.fromRGB(105, 110, 125), -- Thumb hover
+    -- Shadows & Overlays
+    ShadowColor = Color3.fromRGB(10, 10, 12),            -- Deep shadow color
 }
+
 --//Library
 do
     function library.init(title, version, id, position, size)
@@ -463,11 +459,85 @@ do
     end
 
     function library:_ShowGUI()
-        self.MasterContainer:TweenSize(self.size, "Out", "Linear", 0.15, true)
+        self.MasterContainer.Visible = true
+        local initialProperties = {}
+        for _, child in pairs(self.MasterContainer:GetDescendants()) do
+            if child:IsA("GuiObject") then
+                initialProperties[child] = {
+                    BackgroundTransparency = child.BackgroundTransparency,
+                    TextTransparency = child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") and child.TextTransparency or nil
+                }
+                if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                    child.TextTransparency = 1
+                end
+                child.BackgroundTransparency = 1
+            elseif child:IsA("UIGradient") then
+                initialProperties[child] = { Transparency = child.Transparency }
+                local newSequence = {}
+                for _, kp in ipairs(child.Transparency.Keypoints) do
+                    table.insert(newSequence, NumberSequenceKeypoint.new(kp.Time, 1))
+                end
+                child.Transparency = NumberSequence.new(newSequence)
+            end
+        end
+
+        self.MasterContainer.Size = UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0)
+        self.MasterContainer.BackgroundTransparency = 1
+        
+        util.tween(self.MasterContainer, {
+            Size = self.size,
+            BackgroundTransparency = initialProperties[self.MasterContainer].BackgroundTransparency
+        }, 0.3)
+
+        for child, props in pairs(initialProperties) do
+            if child ~= self.MasterContainer then
+                local tweenProps = {}
+                if props.BackgroundTransparency then tweenProps.BackgroundTransparency = props.BackgroundTransparency end
+                if props.TextTransparency then tweenProps.TextTransparency = props.TextTransparency end
+                if props.Transparency then tweenProps.Transparency = props.Transparency end
+                if next(tweenProps) then
+                    util.tween(child, tweenProps, 0.3)
+                end
+            end
+        end
     end
+
     function library:_HideGUI()
-        self.MasterContainer:TweenSize(UDim2.new(0, self.size.X.Offset, 0, 0), "In", "Linear", 0.15, true)
+        local descendantProperties = {}
+        for _, child in pairs(self.MasterContainer:GetDescendants()) do
+            if child:IsA("GuiObject") then
+                descendantProperties[child] = {
+                    BackgroundTransparency = child.BackgroundTransparency + 1,
+                    TextTransparency = (child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox")) and 1 or nil
+                }
+            elseif child:IsA("UIGradient") then
+                local newSequence = {}
+                for _, kp in ipairs(child.Transparency.Keypoints) do
+                    table.insert(newSequence, NumberSequenceKeypoint.new(kp.Time, kp.Value + 1))
+                end
+                descendantProperties[child] = { Transparency = NumberSequence.new(newSequence) }
+            end
+        end
+
+        util.tween(self.MasterContainer, {
+            Size = UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0),
+            BackgroundTransparency = 1
+        }, 0.3)
+        
+        for child, props in pairs(descendantProperties) do
+            local tweenProps = {}
+            if props.BackgroundTransparency then tweenProps.BackgroundTransparency = props.BackgroundTransparency end
+            if props.TextTransparency then tweenProps.TextTransparency = props.TextTransparency end
+            if props.Transparency then tweenProps.Transparency = props.Transparency end
+            if next(tweenProps) then
+                util.tween(child, tweenProps, 0.3)
+            end
+        end
+        
+        task.wait(0.3)
+        self.MasterContainer.Visible = false
     end
+
 
     function library:SetKeybind(new)
         self.keybind = new
@@ -565,32 +635,32 @@ do
 
     function tab:_connections()
         self.TabSelector.MouseButton1Down:Connect(function()
-            self.selected = not self.selected
-            if self.selected then
-                self:select()
-            else
-                self:deselect()
-            end
+            self:select()
         end)
         return self
     end
+
     function tab:_deselectOthers()
-        for _,tab in pairs(self.library.tabs) do
-            if tab ~= self then
-                tab:deselect()
+        for _,otherTab in pairs(self.library.tabs) do
+            if otherTab ~= self and otherTab.selected then
+                otherTab:deselect()
             end
         end
     end
+
     function tab:select()
+        if self.selected then return end
         self.selected = true
         self:_deselectOthers()
         util.tween(self.TabSelectorColour, { BackgroundColor3 = theme.Accent }, 0.15)
-        for i,v in pairs(self.panels) do v.PanelContainer.Visible = self.selected end
+        for i,v in pairs(self.panels) do v.PanelContainer.Visible = true end
     end
+    
     function tab:deselect()
+        if not self.selected then return end
         self.selected = false
         util.tween(self.TabSelectorColour, { BackgroundColor3 = theme.NotSelectedTab }, 0.15)
-        for i,v in pairs(self.panels) do v.PanelContainer.Visible = self.selected end
+        for i,v in pairs(self.panels) do v.PanelContainer.Visible = false end
     end
 
 end
@@ -1610,12 +1680,11 @@ do
         }
     end
 
-    function panel.AddButton(panel, data) --> Select one
+    function panel.AddButton(panel, data)
         local callback = data.callback or EmptyFunction
 
         local Container = panel:_Container(21, true)
 
-        --//Dropdown bar box
         local ButtonBoxOutline, ButtonBoxInside, ButtonText = util.new("Frame", {
             Parent = Container,
             Size = UDim2.new(1, 0, 0, 20),
@@ -1623,12 +1692,12 @@ do
             BackgroundColor3 = theme.InteractableOutline,
             Name = "DropdownboxOutline"
         }, {
-            util.new("Frame", { --underlaying background color (transparency gradient)
+            util.new("Frame", {
                 Size = UDim2.new(1, -2, 1, -2),
                 Position = UDim2.new(0, 1, 0, 1),
                 BackgroundColor3 = theme.ButtonBottom,
                 Name = "DropdownboxInside"
-            }), --children to this added below
+            }),
             util.new("TextLabel", {
                 Text = data.title or "",
                 TextColor3 = theme.SubTextColor,
@@ -1642,6 +1711,7 @@ do
                 TextXAlignment = Enum.TextXAlignment.Center,
             })
         })
+        
         local ButtonColor, UIGradient = util.new("Frame", {
             Parent = ButtonBoxInside,
             Size = UDim2.new(1,0,1,0),
@@ -1657,21 +1727,28 @@ do
                 Rotation = 90
             })
         })
+
+        local glowEffect = util.CreateGlow(ButtonBoxOutline, theme.Glow)
         
-        --//Basic connectionss
         Container.MouseEnter:Connect(function()
-            util.tween(ButtonBoxOutline, { BackgroundColor3 = theme.Accent }, 0.07)
+            util.tween(ButtonBoxOutline, { BackgroundColor3 = theme.Accent }, 0.2)
             panel:SetTip(data.desc or "")
+            util.tween(glowEffect, { ImageTransparency = 0.6 }, 0.3)
         end)
+
         Container.MouseLeave:Connect(function()
-            util.tween(ButtonBoxOutline, { BackgroundColor3 = theme.InteractableOutline }, 0.07)
+            util.tween(ButtonBoxOutline, { BackgroundColor3 = theme.InteractableOutline }, 0.2)
             panel:SetTip("")
+            util.tween(glowEffect, { ImageTransparency = 1 }, 0.3)
         end)
+
         Container.MouseButton1Down:Connect(function()
             callback()
             ButtonText.TextColor3 = theme.Accent
+            util.tween(glowEffect, { ImageTransparency = 0.4, Size = UDim2.fromOffset(Container.AbsoluteSize.X + 30, Container.AbsoluteSize.Y + 30), Position = UDim2.fromOffset(-15, -15) }, 0.1) -- Pulse effect
             task.wait(0.1)
             util.tween(ButtonText, { TextColor3 = theme.SubTextColor }, 0.1)
+            util.tween(glowEffect, { ImageTransparency = 0.6, Size = UDim2.fromOffset(Container.AbsoluteSize.X + 20, Container.AbsoluteSize.Y + 20), Position = UDim2.fromOffset(-10, -10) }, 0.2) -- Return to normal glow
         end)
 
         return {
