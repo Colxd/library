@@ -1,131 +1,102 @@
+-- Box ESP Library by Blissful#4992
 
-local BoxLib = {}
+local players = cloneref(game:GetService("Players"))
+local client = players.LocalPlayer
+local camera = workspace.CurrentCamera
 
+getgenv().global = getgenv()
 
-function BoxLib:New(player)
-    local box = {}
-
-    -- Services and Properties
-    local Workspace = game:GetService("Workspace")
-    local RunService = game:GetService("RunService")
-    local Camera = Workspace.CurrentCamera
-    local LocalPlayer = game:GetService("Players").LocalPlayer
-
-    box.Player = player
-    box.UpdateConnection = nil
-    box.Color = Color3.fromRGB(255, 0, 0) -- Default color
-    box.Thickness = 2
-
-    -- Helper to create drawing lines
-    local function createLine()
-        local line = Drawing.new("Line")
-        line.Visible = false
-        line.Color = box.Color
-        line.Thickness = box.Thickness
-        line.Transparency = 1
-        return line
-    end
-
-    -- Create all the drawing objects for the box corners
-    box.Lines = {
-        TL1 = createLine(), TL2 = createLine(),
-        TR1 = createLine(), TR2 = createLine(),
-        BL1 = createLine(), BL2 = createLine(),
-        BR1 = createLine(), BR2 = createLine()
-    }
-
-    -- This part is used for calculating the screen position of the box
-    local oriPart = Instance.new("Part")
-    oriPart.Transparency = 1
-    oriPart.CanCollide = false
-    oriPart.Anchored = true
-    oriPart.Size = Vector3.new(1, 1, 1)
-    oriPart.Parent = Workspace
-
-    --[[ Methods for controlling the box ]]--
-
-    -- Cleans up all drawing objects and disconnects the update loop
-    function box:Destroy()
-        if box.UpdateConnection then
-            box.UpdateConnection:Disconnect()
-            box.UpdateConnection = nil
-        end
-        for _, line in pairs(box.Lines) do
-            line:Remove()
-        end
-        oriPart:Destroy()
-        -- Nil out tables to help garbage collection
-        box.Player = nil
-        box.Lines = nil
-        print("Box ESP destroyed for:", player.Name)
-    end
-
-    -- Sets a new color for the box
-    function box:SetColor(color)
-        box.Color = color
-        for _, line in pairs(box.Lines) do
-            line.Color = color
-        end
-    end
-    
-    -- Toggles the visibility of all lines
-    function box:SetVisible(state)
-        for _, line in pairs(box.Lines) do
-            line.Visible = state
-        end
-    end
-
-    --[[ Main Update Loop ]]--
-    box.UpdateConnection = RunService.RenderStepped:Connect(function()
-        local char = box.Player and box.Player.Character
-        local localCharHrp = LocalPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-        -- Check if the target player and local player are valid
-        if char and localCharHrp and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0 then
-            local hrp = char.HumanoidRootPart
-            local _, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-
-            if onScreen then
-                box:SetVisible(true)
-                
-                -- Position and size the box based on the character's dimensions
-                oriPart.Size = Vector3.new(hrp.Size.X, hrp.Size.Y * 1.5, hrp.Size.Z)
-                oriPart.CFrame = CFrame.new(hrp.CFrame.Position, Camera.CFrame.Position)
-
-                local SizeX, SizeY = oriPart.Size.X, oriPart.Size.Y
-                local TL = Camera:WorldToViewportPoint((oriPart.CFrame * CFrame.new(SizeX, SizeY, 0)).p)
-                local TR = Camera:WorldToViewportPoint((oriPart.CFrame * CFrame.new(-SizeX, SizeY, 0)).p)
-                local BL = Camera:WorldToViewportPoint((oriPart.CFrame * CFrame.new(SizeX, -SizeY, 0)).p)
-                local BR = Camera:WorldToViewportPoint((oriPart.CFrame * CFrame.new(-SizeX, -SizeY, 0)).p)
-
-                local ratio = (Camera.CFrame.p - hrp.Position).magnitude
-                local offset = math.clamp(1 / ratio * 750, 2, 30)
-
-                -- Update line positions for the corner boxes
-                box.Lines.TL1.From, box.Lines.TL1.To = Vector2.new(TL.X, TL.Y), Vector2.new(TL.X + offset, TL.Y)
-                box.Lines.TL2.From, box.Lines.TL2.To = Vector2.new(TL.X, TL.Y), Vector2.new(TL.X, TL.Y + offset)
-                box.Lines.TR1.From, box.Lines.TR1.To = Vector2.new(TR.X, TR.Y), Vector2.new(TR.X - offset, TR.Y)
-                box.Lines.TR2.From, box.Lines.TR2.To = Vector2.new(TR.X, TR.Y), Vector2.new(TR.X, TR.Y + offset)
-                box.Lines.BL1.From, box.Lines.BL1.To = Vector2.new(BL.X, BL.Y), Vector2.new(BL.X + offset, BL.Y)
-                box.Lines.BL2.From, box.Lines.BL2.To = Vector2.new(BL.X, BL.Y), Vector2.new(BL.X, BL.Y - offset)
-                box.Lines.BR1.From, box.Lines.BR1.To = Vector2.new(BR.X, BR.Y), Vector2.new(BR.X - offset, BR.Y)
-                box.Lines.BR2.From, box.Lines.BR2.To = Vector2.new(BR.X, BR.Y), Vector2.new(BR.X, BR.Y - offset)
-
-                -- Autothickness based on distance
-                local distance = (localCharHrp.Position - hrp.Position).magnitude
-                local thickness = math.clamp(1 / distance * 100, 1, 4)
-                for _, line in pairs(box.Lines) do
-                    line.Thickness = thickness
-                end
-            else
-                box:SetVisible(false)
-            end
-        else
-            box:SetVisible(false)
-        end
-    end)
-    
-    return box
+function global.declare(self, index, value, check)
+	if self[index] == nil then self[index] = value elseif check then local methods = { "remove", "Disconnect" }; for _, method in methods do pcall(function() value[method](value) end) end end; return self[index]
 end
 
-return BoxLib
+declare(global, "services", {})
+function global.get(service) return services[service] end
+declare(declare(services, "loop", {}), "cache", {})
+
+get("loop").new = function(self, index, func, disabled)
+	if disabled == nil and (func == nil or typeof(func) == "boolean") then disabled = func func = index end
+	self.cache[index] = { ["enabled"] = (not disabled), ["func"] = func, ["toggle"] = function(self, boolean) if boolean == nil then self.enabled = not self.enabled else self.enabled = boolean end end, ["remove"] = function() self.cache[index] = nil end }; return self.cache[index]
+end
+
+declare(get("loop"), "connection", cloneref(game:GetService("RunService")).RenderStepped:Connect(function(delta)
+	for _, loop in get("loop").cache do if loop.enabled then local success, result = pcall(function() loop.func(delta) end); if not success then warn(result) end end end
+end), true)
+
+declare(services, "new", {})
+get("new").drawing = function(class, properties)
+	local drawing = Drawing.new(class); for property, value in properties do pcall(function() drawing[property] = value end) end; return drawing
+end
+
+declare(declare(services, "player", {}), "cache", {})
+get("player").find = function(self, player) for character, data in self.cache do if data.player == player then return character end end end
+get("player").check = function(self, player)
+	local success, check = pcall(function() local character = player:IsA("Player") and player.Character or player; local children = { character.Humanoid, character.HumanoidRootPart }; return children and character.Parent ~= nil end); return success and check
+end
+
+get("player").new = function(self, player)
+	local function cache(character)
+		self.cache[character] = { ["player"] = player, ["drawings"] = { ["box"] = get("new").drawing("Square", { Visible = false }), ["boxOutline"] = get("new").drawing("Square", { Visible = false }) } }
+	end
+	local function check(character) if self:check(character) then cache(character) else local listener; listener = character.ChildAdded:Connect(function() if self:check(character) then cache(character) listener:Disconnect() end end) end end
+	if player.Character then check(player.Character) end; player.CharacterAdded:Connect(check)
+end
+
+get("player").remove = function(self, player)
+	if player:IsA("Player") then local character = self:find(player); if character then self:remove(character) end
+	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in drawings do drawing:Remove() end end
+end
+
+get("player").update = function(self, character, data)
+	if not self:check(character) then self:remove(character) end
+	local player = data.player; local root = character.HumanoidRootPart; local drawings = data.drawings
+	if self:check(client) then data.distance = (client.Character.HumanoidRootPart.CFrame.Position - root.CFrame.Position).Magnitude end
+
+	task.spawn(function()
+		local position, visible = camera:WorldToViewportPoint(root.CFrame.Position)
+		local visuals = features.visuals
+		local function check() local team; if visuals.teamCheck then team = player.Team ~= client.Team else team = true end; return visuals.enabled and data.distance and data.distance <= visuals.renderDistance and team end
+		local function color(color) if visuals.teamColor then color = player.TeamColor.Color end; return color end
+
+		if visible and check() then
+			local scale = 1 / (position.Z * math.tan(math.rad(camera.FieldOfView * 0.5)) * 2) * 1000
+			local width, height = math.floor(4.5 * scale), math.floor(6 * scale)
+			local x, y = math.floor(position.X), math.floor(position.Y)
+			local xPosition, yPostion = math.floor(x - width * 0.5), math.floor((y - height * 0.5) + (0.5 * scale))
+
+			drawings.box.Size = Vector2.new(width, height)
+			drawings.box.Position = Vector2.new(xPosition, yPostion)
+			drawings.boxOutline.Size = drawings.box.Size
+			drawings.boxOutline.Position = drawings.box.Position
+
+			drawings.box.Color = color(visuals.boxes.color)
+			drawings.box.Thickness = 1
+			drawings.boxOutline.Color = visuals.boxes.outline.color
+			drawings.boxOutline.Thickness = 3
+			drawings.boxOutline.ZIndex = drawings.box.ZIndex - 1
+		end
+		drawings.box.Visible = (check() and visible and visuals.boxes.enabled)
+		drawings.boxOutline.Visible = (check() and drawings.box.Visible and visuals.boxes.outline.enabled)
+	end)
+end
+
+declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true)) -- Starts disabled
+declare(global, "features", {})
+
+features.toggle = function(self, feature, boolean)
+	if self[feature] then
+		if boolean == nil then self[feature].enabled = not self[feature].enabled else self[feature].enabled = boolean end
+		get("player").loop:toggle(self[feature].enabled)
+	end
+end
+
+declare(features, "visuals", {
+	["enabled"] = false, ["teamCheck"] = false, ["teamColor"] = true, ["renderDistance"] = 2000,
+	["boxes"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(255, 255, 255), ["outline"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(0, 0, 0) } }
+})
+
+for _, player in players:GetPlayers() do if player ~= client and not get("player"):find(player) then get("player"):new(player) end end
+declare(get("player"), "added", players.PlayerAdded:Connect(function(player) get("player"):new(player) end), true)
+declare(get("player"), "removing", players.PlayerRemoving:Connect(function(player) get("player"):remove(player) end), true)
+
+return features
