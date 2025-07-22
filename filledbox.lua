@@ -1,4 +1,4 @@
--- Filled Box ESP Library by Blissful#4992
+
 
 local players = cloneref(game:GetService("Players"))
 local client = players.LocalPlayer
@@ -79,8 +79,18 @@ declare(global, "features", {})
 
 features.toggle = function(self, feature, boolean)
 	if self[feature] then
-		if boolean == nil then self[feature].enabled = not self[feature].enabled else self[feature].enabled = boolean end
-		get("player").loop:toggle(self[feature].enabled)
+		local enabled = if boolean == nil then not self[feature].enabled else boolean
+		self[feature].enabled = enabled
+		get("player").loop:toggle(enabled)
+
+		--// [FIX] If disabling, iterate through all drawings and hide them.
+		if not enabled then
+			for _, data in get("player").cache do
+				for _, drawing in data.drawings do
+					drawing.Visible = false
+				end
+			end
+		end
 	end
 end
 
