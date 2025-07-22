@@ -279,6 +279,7 @@ do
             visible = true,
             tabs = {},
             selectedTab = 1,
+            initialProperties = {},
 
             MasterContainer = MasterContainer,
             TopBarContainer = TopBarContainer,
@@ -459,84 +460,74 @@ do
     end
 
     function library:_ShowGUI()
-        self.MasterContainer.Visible = true
-        local initialProperties = {}
+    -- If the cache of original properties is empty, populate it now.
+    -- This runs only once to save the "visible" state of the UI.
+    if not next(self.initialProperties) then
+        self.initialProperties[self.MasterContainer] = { BackgroundTransparency = self.MasterContainer.BackgroundTransparency }
         for _, child in pairs(self.MasterContainer:GetDescendants()) do
+            local props = {}
             if child:IsA("GuiObject") then
-                initialProperties[child] = {
-                    BackgroundTransparency = child.BackgroundTransparency,
-                    TextTransparency = child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") and child.TextTransparency or nil
-                }
-                if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
-                    child.TextTransparency = 1
-                end
-                child.BackgroundTransparency = 1
-            elseif child:IsA("UIGradient") then
-                initialProperties[child] = { Transparency = child.Transparency }
-                local newSequence = {}
-                for _, kp in ipairs(child.Transparency.Keypoints) do
-                    table.insert(newSequence, NumberSequenceKeypoint.new(kp.Time, 1))
-                end
-                child.Transparency = NumberSequence.new(newSequence)
+                props.BackgroundTransparency = child.BackgroundTransparency
             end
-        end
-
-        self.MasterContainer.Size = UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0)
-        self.MasterContainer.BackgroundTransparency = 1
-        
-        util.tween(self.MasterContainer, {
-            Size = self.size,
-            BackgroundTransparency = initialProperties[self.MasterContainer].BackgroundTransparency
-        }, 0.3)
-
-        for child, props in pairs(initialProperties) do
-            if child ~= self.MasterContainer then
-                local tweenProps = {}
-                if props.BackgroundTransparency then tweenProps.BackgroundTransparency = props.BackgroundTransparency end
-                if props.TextTransparency then tweenProps.TextTransparency = props.TextTransparency end
-                if props.Transparency then tweenProps.Transparency = props.Transparency end
-                if next(tweenProps) then
-                    util.tween(child, tweenProps, 0.3)
-                end
+            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
+                props.TextTransparency = child.TextTransparency
+            end
+            if child:IsA("UIGradient") then
+                props.Transparency = child.Transparency
+            end
+            if next(props) then
+                self.initialProperties[child] = props
             end
         end
     end
 
-    function library:_HideGUI()
-        local descendantProperties = {}
-        for _, child in pairs(self.MasterContainer:GetDescendants()) do
-            if child:IsA("GuiObject") then
-                descendantProperties[child] = {
-                    BackgroundTransparency = child.BackgroundTransparency + 1,
-                    TextTransparency = (child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox")) and 1 or nil
-                }
-            elseif child:IsA("UIGradient") then
-                local newSequence = {}
-                for _, kp in ipairs(child.Transparency.Keypoints) do
-                    table.insert(newSequence, NumberSequenceKeypoint.new(kp.Time, kp.Value + 1))
-                end
-                descendantProperties[child] = { Transparency = NumberSequence.new(newSequence) }
-            end
+    -- Set the starting state for the animation (fully transparent and small)
+    self.MasterContainer.Visible = true
+    self.MasterContainer.Size = UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0)
+    self.MasterContainer.BackgroundTransparency = 1
+    for child in pairs(self.initialProperties) do
+        if child.Parent then -- Make sure object wasn't destroyed
+            if child:IsA("GuiObject") then child.BackgroundTransparency = 1 end
+            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then child.TextTransparency = 1 end
+            if child:IsA("UIGradient") then child.Transparency = NumberSequence.new(1) end
         end
-
-        util.tween(self.MasterContainer, {
-            Size = UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0),
-            BackgroundTransparency = 1
-        }, 0.3)
-        
-        for child, props in pairs(descendantProperties) do
-            local tweenProps = {}
-            if props.BackgroundTransparency then tweenProps.BackgroundTransparency = props.BackgroundTransparency end
-            if props.TextTransparency then tweenProps.TextTransparency = props.TextTransparency end
-            if props.Transparency then tweenProps.Transparency = props.Transparency end
-            if next(tweenProps) then
-                util.tween(child, tweenProps, 0.3)
-            end
-        end
-        
-        task.wait(0.3)
-        self.MasterContainer.Visible = false
     end
+    
+    -- Animate to the final, visible state using the cached properties
+    util.tween(self.MasterContainer, {
+        Size = self.size,
+        BackgroundTransparency = self.initialProperties[self.MasterContainer].BackgroundTransparency
+    }, 0.3)
+    
+    for child, props in pairs(self.initialProperties) do
+        if child ~= self.MasterContainer and child.Parent then
+            util.tween(child, props, 0.3)
+        end
+    end
+end
+
+function library:_HideGUI()
+    -- Animate all elements to become invisible
+    util.tween(self.MasterContainer, {
+        Size = UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0),
+        BackgroundTransparency = 1
+    }, 0.3)
+    
+    for child in pairs(self.initialProperties) do
+        if child ~= self.MasterContainer and child.Parent then
+            local hideProps = {}
+            if child:IsA("GuiObject") then hideProps.BackgroundTransparency = 1 end
+            if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then hideProps.TextTransparency = 1 end
+            if child:IsA("UIGradient") then hideProps.Transparency = NumberSequence.new(1) end
+            if next(hideProps) then
+                util.tween(child, hideProps, 0.3)
+            end
+        end
+    end
+    
+    task.wait(0.3)
+    self.MasterContainer.Visible = false
+end
 
 
     function library:SetKeybind(new)
