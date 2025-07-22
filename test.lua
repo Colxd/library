@@ -454,7 +454,7 @@ do
 
     function library:ToggleGUI(yesno)
         self.visible = (yesno == nil) and (not self.visible) or yesno
-        if self.visible then self:_ShowGUI() else self:_HideGUI() end
+        if self.visible then self:_ShowGUI() end
         return self.visible
     end
 
