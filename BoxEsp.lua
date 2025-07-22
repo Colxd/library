@@ -1,4 +1,4 @@
--- Box ESP Library by Blissful#4992 (Updated)
+
 
 local players = cloneref(game:GetService("Players"))
 local client = players.LocalPlayer
@@ -44,7 +44,7 @@ end
 
 get("player").remove = function(self, player)
 	if player:IsA("Player") then local character = self:find(player); if character then self:remove(character) end
-	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in drawings do drawing:Remove() end end
+	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in pairs(drawings) do drawing:Remove() end end
 end
 
 get("player").update = function(self, character, data)
@@ -68,37 +68,29 @@ get("player").update = function(self, character, data)
 			drawings.box.Position = Vector2.new(xPosition, yPostion)
 			drawings.boxOutline.Size = drawings.box.Size
 			drawings.boxOutline.Position = drawings.box.Position
-
 			drawings.box.Color = color(visuals.boxes.color)
 			drawings.box.Thickness = 1
 			drawings.boxOutline.Color = visuals.boxes.outline.color
 			drawings.boxOutline.Thickness = 3
 			drawings.boxOutline.ZIndex = drawings.box.ZIndex - 1
 		end
-		drawings.box.Visible = (check() and visible and visuals.boxes.enabled)
-		drawings.boxOutline.Visible = (check() and drawings.box.Visible and visuals.boxes.outline.enabled)
+		if drawings.box then drawings.box.Visible = (check() and visible and visuals.boxes.enabled) end
+		if drawings.boxOutline then drawings.boxOutline.Visible = (check() and drawings.box.Visible and visuals.boxes.outline.enabled) end
 	end)
 end
 
-declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true)) -- Starts disabled
+declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true))
 declare(global, "features", {})
 
 features.toggle = function(self, feature, boolean)
 	if self[feature] then
-        -- [FIX] Use a more compatible if/else block
-		local enabled
-		if boolean == nil then
-			enabled = not self[feature].enabled
-		else
-			enabled = boolean
-		end
-
+		local enabled; if boolean == nil then enabled = not self[feature].enabled else enabled = boolean end
 		self[feature].enabled = enabled
 		get("player").loop:toggle(enabled)
-
 		if not enabled then
-			for _, data in get("player").cache do
-				for _, drawing in data.drawings do
+			for _, data in pairs(get("player").cache) do
+                -- [FIX] Use pairs() to iterate correctly
+				for _, drawing in pairs(data.drawings) do
 					drawing.Visible = false
 				end
 			end
