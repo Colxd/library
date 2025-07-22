@@ -15,16 +15,16 @@ function NameEspLibrary:New(player, settings)
     esp.Settings = {
         Color = (settings and settings.Color) or Color3.fromRGB(255, 255, 255),
         AutoScale = (settings and settings.AutoScale ~= nil) and settings.AutoScale or true,
-        MinSize = (settings and settings.MinSize) or 10,
-        MaxSize = (settings and settings.MaxSize) or 22,
+        MinSize = (settings and settings.MinSize) or 12,
+        MaxSize = (settings and settings.MaxSize) or 24,
         YOffset = (settings and settings.YOffset) or 2
     }
 
     esp.TextObject = Drawing.new("Text")
     esp.TextObject.Visible = false
     esp.TextObject.Center = true
-    esp.TextObject.Outline = true
-    esp.TextObject.Font = Drawing.Fonts.UI
+    esp.TextObject.Outline = true -- Makes text readable on any background
+    esp.TextObject.Font = Drawing.Fonts.Plex -- Changed to a cleaner, more modern font
     esp.TextObject.Color = esp.Settings.Color
     esp.TextObject.Size = 15 -- Initial size
 
