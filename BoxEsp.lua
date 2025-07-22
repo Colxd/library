@@ -1,6 +1,18 @@
--- Corrected BoxEsp.lua
-local players = cloneref(game:GetService("Players"))
-local client = players.LocalPlayer
+-- ================================================================= --
+--                [Fixed & More Compatible] BoxEsp.lua                --
+-- ================================================================= --
+
+-- [FIX] Check for the required Drawing library at the start.
+-- If your executor doesn't provide it, the script will not load and will warn you.
+if not Drawing or not Drawing.new then
+    warn("Box ESP failed to load: The required 'Drawing' library was not found in your environment.")
+    return nil
+end
+
+-- [FIX] Removed 'cloneref' for better compatibility across different executors.
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local client = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 getgenv().global = getgenv()
@@ -18,7 +30,7 @@ get("loop").new = function(self, index, func, disabled)
     self.cache[index] = { ["enabled"] = (not disabled), ["func"] = func, ["toggle"] = function(self, boolean) if boolean == nil then self.enabled = not self.enabled else self.enabled = boolean end end, ["remove"] = function() self.cache[index] = nil end }; return self.cache[index]
 end
 
-declare(get("loop"), "connection", cloneref(game:GetService("RunService")).RenderStepped:Connect(function(delta)
+declare(get("loop"), "connection", RunService.RenderStepped:Connect(function(delta)
     for _, loop in get("loop").cache do if loop.enabled then local success, result = pcall(function() loop.func(delta) end); if not success then warn(result) end end end
 end), true)
 
@@ -49,13 +61,15 @@ end
 get("player").update = function(self, character, data)
     if not self:check(character) then self:remove(character) end
     local player = data.player; local root = character.HumanoidRootPart; local drawings = data.drawings
-    if self:check(client) then data.distance = (client.Character.HumanoidRootPart.CFrame.Position - root.CFrame.Position).Magnitude end
+    if self:check(client) and client.Character and client.Character.HumanoidRootPart then
+        data.distance = (client.Character.HumanoidRootPart.Position - root.Position).Magnitude
+    end
 
     task.spawn(function()
-        local position, visible = camera:WorldToViewportPoint(root.CFrame.Position)
+        local position, visible = camera:WorldToViewportPoint(root.Position)
         local visuals = features.visuals
         local function check() local team; if visuals.teamCheck then team = player.Team ~= client.Team else team = true end; return visuals.enabled and data.distance and data.distance <= visuals.renderDistance and team end
-        local function color(color) if visuals.teamColor then color = player.TeamColor.Color end; return color end
+        local function color(color) if visuals.teamColor and player.TeamColor then color = player.TeamColor.Color end; return color end
 
         if visible and check() then
             local scale = 1 / (position.Z * math.tan(math.rad(camera.FieldOfView * 0.5)) * 2) * 1000
@@ -101,8 +115,8 @@ declare(features, "visuals", {
     ["boxes"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(255, 255, 255), ["outline"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(0, 0, 0) } }
 })
 
-for _, player in players:GetPlayers() do if player ~= client and not get("player"):find(player) then get("player"):new(player) end end
-declare(get("player"), "added", players.PlayerAdded:Connect(function(player) get("player"):new(player) end), true)
-declare(get("player"), "removing", players.PlayerRemoving:Connect(function(player) get("player"):remove(player) end), true)
+for _, player in Players:GetPlayers() do if player ~= client and not get("player"):find(player) then get("player"):new(player) end end
+declare(get("player"), "added", Players.PlayerAdded:Connect(function(player) get("player"):new(player) end), true)
+declare(get("player"), "removing", Players.PlayerRemoving:Connect(function(player) get("player"):remove(player) end), true)
 
 return features
