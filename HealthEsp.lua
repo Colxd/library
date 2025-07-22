@@ -44,7 +44,7 @@ end
 
 get("player").remove = function(self, player)
 	if player:IsA("Player") then local character = self:find(player); if character then self:remove(character) end
-	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in drawings do drawing:Remove() end end
+	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in pairs(drawings) do drawing:Remove() end end
 end
 
 get("player").update = function(self, character, data)
@@ -71,7 +71,6 @@ get("player").update = function(self, character, data)
 			drawings.healthText.Text = `[ HP {math.floor(humanoid.Health)} ]`
 			drawings.healthText.Size = math.max(math.min(math.abs(11 * scale), 11), 10)
 			drawings.healthText.Position = Vector2.new(drawings.health.To.X - (drawings.healthText.TextBounds.X + 3), (drawings.health.To.Y - (2 / scale)))
-
 			drawings.health.Color = visuals.health.colorLow:Lerp(visuals.health.color, healthPercent * 0.01)
 			drawings.healthOutline.Color = visuals.health.outline.color
 			drawings.healthOutline.Thickness = 3
@@ -80,31 +79,24 @@ get("player").update = function(self, character, data)
 			drawings.healthText.OutlineColor = visuals.health.outline.color
 			drawings.healthOutline.ZIndex = drawings.health.ZIndex - 1
 		end
-		drawings.health.Visible = (check() and visible and visuals.health.enabled)
-		drawings.healthOutline.Visible = (check() and drawings.health.Visible and visuals.health.outline.enabled)
-		drawings.healthText.Visible = (check() and drawings.health.Visible and visuals.health.text.enabled)
+		if drawings.health then drawings.health.Visible = (check() and visible and visuals.health.enabled) end
+		if drawings.healthOutline then drawings.healthOutline.Visible = (check() and drawings.health.Visible and visuals.health.outline.enabled) end
+		if drawings.healthText then drawings.healthText.Visible = (check() and drawings.health.Visible and visuals.health.text.enabled) end
 	end)
 end
 
-declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true)) -- Starts disabled
+declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true))
 declare(global, "features", {})
 
 features.toggle = function(self, feature, boolean)
 	if self[feature] then
-        -- [FIX] Use a more compatible if/else block
-		local enabled
-		if boolean == nil then
-			enabled = not self[feature].enabled
-		else
-			enabled = boolean
-		end
-
+		local enabled; if boolean == nil then enabled = not self[feature].enabled else enabled = boolean end
 		self[feature].enabled = enabled
 		get("player").loop:toggle(enabled)
-
 		if not enabled then
-			for _, data in get("player").cache do
-				for _, drawing in data.drawings do
+			for _, data in pairs(get("player").cache) do
+                -- [FIX] Use pairs() to iterate correctly
+				for _, drawing in pairs(data.drawings) do
 					drawing.Visible = false
 				end
 			end
