@@ -1,194 +1,140 @@
--- skeleton.lua
-local RS = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local LocalPlayer = game:GetService("Players").LocalPlayer
+-- Skeleton ESP Library by Blissful#4992
 
-local Library = {}
-Library.__index = Library
+local players = cloneref(game:GetService("Players"))
+local client = players.LocalPlayer
+local camera = workspace.CurrentCamera
 
---[[
-    Internal Functions
-]]
+getgenv().global = getgenv()
 
-function Library:NewLine(info)
-    local l = Drawing.new("Line")
-    l.Visible = info.Visible or true
-    l.Color = info.Color or Color3.fromRGB(0, 255, 0)
-    l.Transparency = info.Transparency or 1
-    l.Thickness = info.Thickness or 1
-    return l
+function global.declare(self, index, value, check)
+	if self[index] == nil then self[index] = value elseif check then local methods = { "remove", "Disconnect" }; for _, method in methods do pcall(function() value[method](value) end) end end; return self[index]
 end
 
---[[
-    Skeleton Object
-]]
+declare(global, "services", {})
+function global.get(service) return services[service] end
+declare(declare(services, "loop", {}), "cache", {})
 
-local Skeleton = {
-    Removed = false,
-    Player = nil,
-    Visible = false,
-    Lines = {},
-    Color = Color3.fromRGB(0, 255, 0),
-    Alpha = 1,
-    Thickness = 1,
-    DoSubsteps = true,
-    Connection = nil
+get("loop").new = function(self, index, func, disabled)
+	if disabled == nil and (func == nil or typeof(func) == "boolean") then disabled = func func = index end
+	self.cache[index] = { ["enabled"] = (not disabled), ["func"] = func, ["toggle"] = function(self, boolean) if boolean == nil then self.enabled = not self.enabled else self.enabled = boolean end end, ["remove"] = function() self.cache[index] = nil end }; return self.cache[index]
+end
+
+declare(get("loop"), "connection", cloneref(game:GetService("RunService")).RenderStepped:Connect(function(delta)
+	for _, loop in get("loop").cache do if loop.enabled then local success, result = pcall(function() loop.func(delta) end); if not success then warn(result) end end end
+end), true)
+
+declare(services, "new", {})
+get("new").drawing = function(class, properties)
+	local drawing = Drawing.new(class); for property, value in properties do pcall(function() drawing[property] = value end) end; return drawing
+end
+
+declare(declare(services, "player", {}), "cache", {})
+get("player").find = function(self, player) for character, data in self.cache do if data.player == player then return character end end end
+get("player").check = function(self, player)
+	local success, check = pcall(function() local character = player:IsA("Player") and player.Character or player; local children = { character.Humanoid, character.HumanoidRootPart }; return children and character.Parent ~= nil end); return success and check
+end
+
+local BONES = {
+	{ "Head", "UpperTorso" },
+	{ "UpperTorso", "LowerTorso" },
+	{ "UpperTorso", "LeftUpperArm" },
+	{ "LeftUpperArm", "LeftLowerArm" },
+	{ "LeftLowerArm", "LeftHand" },
+	{ "UpperTorso", "RightUpperArm" },
+	{ "RightUpperArm", "RightLowerArm" },
+	{ "RightLowerArm", "RightHand" },
+	{ "LowerTorso", "LeftUpperLeg" },
+	{ "LeftUpperLeg", "LeftLowerLeg" },
+	{ "LeftLowerLeg", "LeftFoot" },
+	{ "LowerTorso", "RightUpperLeg" },
+	{ "RightUpperLeg", "RightLowerLeg" },
+	{ "RightLowerLeg", "RightFoot" }
 }
-Skeleton.__index = Skeleton
 
-function Skeleton:UpdateStructure()
-    if not self.Player or not self.Player.Character then return end
-    self:RemoveLines()
-    for _, part in ipairs(self.Player.Character:GetChildren()) do
-        if part:IsA("BasePart") then
-            for _, link in ipairs(part:GetChildren()) do
-                if link:IsA("Motor6D") then
-                    table.insert(
-                        self.Lines,
-                        {
-                            Library:NewLine({Visible = self.Visible, Color = self.Color, Transparency = self.Alpha, Thickness = self.Thickness}),
-                            Library:NewLine({Visible = self.Visible, Color = self.Color, Transparency = self.Alpha, Thickness = self.Thickness}),
-                            part.Name,
-                            link.Name
-                        }
-                    )
-                end
-            end
-        end
-    end
+get("player").new = function(self, player)
+	local function cache(character)
+		local drawings = {}
+		for i, v in ipairs(BONES) do
+			drawings["bone" .. i] = get("new").drawing("Line", { Visible = false, Thickness = 2 })
+		end
+		self.cache[character] = { ["player"] = player, ["drawings"] = drawings }
+	end
+	local function check(character) if self:check(character) then cache(character) else local listener; listener = character.ChildAdded:Connect(function() if self:check(character) then cache(character) listener:Disconnect() end end) end end
+	if player.Character then check(player.Character) end; player.CharacterAdded:Connect(check)
 end
 
-function Skeleton:SetVisible(State)
-    self.Visible = State
-    for _, l in pairs(self.Lines) do
-        l[1].Visible = State
-        l[2].Visible = State
-    end
+get("player").remove = function(self, player)
+	if player:IsA("Player") then local character = self:find(player); if character then self:remove(character) end
+	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in drawings do drawing:Remove() end end
 end
 
-function Skeleton:SetColor(Color)
-    self.Color = Color
-    for _, l in pairs(self.Lines) do
-        l[1].Color = Color
-        l[2].Color = Color
-    end
+get("player").update = function(self, character, data)
+	if not self:check(character) then self:remove(character) end
+	local player = data.player; local drawings = data.drawings
+	if self:check(client) then data.distance = (client.Character.HumanoidRootPart.CFrame.Position - character.HumanoidRootPart.CFrame.Position).Magnitude end
+
+	task.spawn(function()
+		local visuals = features.visuals
+		local function check() local team; if visuals.teamCheck then team = player.Team ~= client.Team else team = true end; return visuals.enabled and data.distance and data.distance <= visuals.renderDistance and team end
+		local function color(color) if visuals.teamColor then color = player.TeamColor.Color end; return color end
+
+		local allVisible = true
+		local partPositions = {}
+
+		for _, v in ipairs(BONES) do
+			for _, partName in ipairs(v) do
+				if not partPositions[partName] then
+					local part = character:FindFirstChild(partName)
+					if part then
+						local pos, onScreen = camera:WorldToViewportPoint(part.Position)
+						if onScreen then partPositions[partName] = Vector2.new(pos.X, pos.Y)
+						else allVisible = false; break end
+					else allVisible = false; break end
+				end
+			end
+			if not allVisible then break end
+		end
+
+		if allVisible and check() then
+			for i, v in ipairs(BONES) do
+				local line = drawings["bone" .. i]
+				line.From = partPositions[v[1]]
+				line.To = partPositions[v[2]]
+				line.Color = color(visuals.skeleton.color)
+				line.Visible = true
+			end
+		else
+			for _, line in pairs(drawings) do line.Visible = false end
+		end
+	end)
 end
 
-function Skeleton:SetAlpha(Alpha)
-    self.Alpha = Alpha
-    for _, l in pairs(self.Lines) do
-        l[1].Transparency = Alpha
-        l[2].Transparency = Alpha
-    end
+declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true)) -- Starts disabled
+declare(global, "features", {})
+
+features.toggle = function(self, feature, boolean)
+	if self[feature] then
+		local enabled = if boolean == nil then not self[feature].enabled else boolean
+		self[feature].enabled = enabled
+		get("player").loop:toggle(enabled)
+
+		if not enabled then
+			for _, data in get("player").cache do
+				for _, drawing in data.drawings do
+					drawing.Visible = false
+				end
+			end
+		end
+	end
 end
 
-function Skeleton:SetThickness(Thickness)
-    self.Thickness = Thickness
-    for _, l in pairs(self.Lines) do
-        l[1].Thickness = Thickness
-        l[2].Thickness = Thickness
-    end
-end
+declare(features, "visuals", {
+	["enabled"] = false, ["teamCheck"] = false, ["teamColor"] = true, ["renderDistance"] = 2000,
+	["skeleton"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(0, 255, 0) }
+})
 
-function Skeleton:Update()
-    if self.Removed then return end
+for _, player in players:GetPlayers() do if player ~= client and not get("player"):find(player) then get("player"):new(player) end end
+declare(get("player"), "added", players.PlayerAdded:Connect(function(player) get("player"):new(player) end), true)
+declare(get("player"), "removing", players.PlayerRemoving:Connect(function(player) get("player"):remove(player) end), true)
 
-    local Character = self.Player.Character
-    if not (Character and Character:FindFirstChildOfClass("Humanoid")) then
-        self:SetVisible(false)
-        if not self.Player.Parent then
-            self:Destroy()
-        end
-        return
-    end
-
-    if not self.Visible then self:SetVisible(true) end
-
-    local update = false
-    for _, l in pairs(self.Lines) do
-        local part = Character:FindFirstChild(l[3])
-        if not part then
-            l[1].Visible, l[2].Visible, update = false, false, true
-            continue
-        end
-
-        local link = part:FindFirstChild(l[4])
-        if not (link and link.Part0 and link.Part1) then
-            l[1].Visible, l[2].Visible, update = false, false, true
-            continue
-        end
-
-        local part0, part1 = link.Part0, link.Part1
-        
-        -- FIXED: Changed 'To2D(Camera, ...)' to 'Camera:WorldToViewportPoint(...)'
-        local p0Pos, p0Vis = Camera:WorldToViewportPoint(part0.Position)
-        local p1Pos, p1Vis = Camera:WorldToViewportPoint(part1.Position)
-
-        if p0Vis and p1Vis then
-            l[1].From = Vector2.new(p0Pos.X, p0Pos.Y)
-            l[1].To = Vector2.new(p1Pos.X, p1Pos.Y)
-            l[1].Visible = true
-        else
-            l[1].Visible = false
-        end
-        l[2].Visible = false -- Only one line needed per bone
-    end
-
-    if update or #self.Lines == 0 then
-        self:UpdateStructure()
-    end
-end
-
-function Skeleton:Start()
-    self:Stop() -- Prevent duplicate connections
-    self:UpdateStructure()
-    self.Visible = true
-    self.Connection = RS.Heartbeat:Connect(function()
-        self:Update()
-    end)
-end
-
-function Skeleton:Stop()
-    if self.Connection then
-        self.Connection:Disconnect()
-        self.Connection = nil
-    end
-    self:SetVisible(false)
-end
-
-function Skeleton:RemoveLines()
-    for _, l in pairs(self.Lines) do
-        if l[1] then l[1]:Remove() end
-        if l[2] then l[2]:Remove() end
-    end
-    self.Lines = {}
-end
-
--- Aliased to Destroy for compatibility with the UI
-function Skeleton:Remove()
-    self.Removed = true
-    self:Stop()
-    self:RemoveLines()
-end
-
--- FIXED: Added a Destroy function that the UI script looks for
-function Skeleton:Destroy()
-    self:Remove()
-end
-
---[[
-    Constructor Function
-]]
-function Library:NewSkeleton(Player, IsVisible)
-    if not Player then error("Missing Player argument (#1)") end
-    local s = setmetatable({}, Skeleton)
-    s.Player = Player
-
-    if IsVisible then
-        s:Start()
-    end
-
-    return s
-end
-
-return Library
+return features
