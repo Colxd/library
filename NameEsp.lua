@@ -44,7 +44,7 @@ end
 
 get("player").remove = function(self, player)
 	if player:IsA("Player") then local character = self:find(player); if character then self:remove(character) end
-	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in pairs(drawings) do drawing:Remove() end end
+	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in drawings do drawing:Remove() end end
 end
 
 get("player").update = function(self, character, data)
@@ -70,26 +70,17 @@ get("player").update = function(self, character, data)
 			drawings.name.Outline = visuals.names.outline.enabled
 			drawings.name.OutlineColor = visuals.names.outline.color
 		end
-		if drawings.name then drawings.name.Visible = (check() and visible and visuals.names.enabled) end
+		drawings.name.Visible = (check() and visible and visuals.names.enabled)
 	end)
 end
 
-declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true))
+declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true)) -- Starts disabled
 declare(global, "features", {})
 
 features.toggle = function(self, feature, boolean)
 	if self[feature] then
-		local enabled; if boolean == nil then enabled = not self[feature].enabled else enabled = boolean end
-		self[feature].enabled = enabled
-		get("player").loop:toggle(enabled)
-		if not enabled then
-			for _, data in pairs(get("player").cache) do
-                -- [FIX] Use pairs() to iterate correctly
-				for _, drawing in pairs(data.drawings) do
-					drawing.Visible = false
-				end
-			end
-		end
+		if boolean == nil then self[feature].enabled = not self[feature].enabled else self[feature].enabled = boolean end
+		get("player").loop:toggle(self[feature].enabled)
 	end
 end
 
@@ -102,4 +93,4 @@ for _, player in players:GetPlayers() do if player ~= client and not get("player
 declare(get("player"), "added", players.PlayerAdded:Connect(function(player) get("player"):new(player) end), true)
 declare(get("player"), "removing", players.PlayerRemoving:Connect(function(player) get("player"):remove(player) end), true)
 
-return features
+return features -- Return features table to be controlled externally
