@@ -459,106 +459,11 @@ do
     end
 
 function library:_ShowGUI()
-    -- Set the starting state for the animation (fully transparent and collapsed)
-    self.MasterContainer.Visible = true
-    self.MasterContainer.Size = UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0)
-    self.MasterContainer.BackgroundTransparency = 1
-    
-    for _, child in pairs(self.MasterContainer:GetDescendants()) do
-        if child:IsA("GuiObject") then
-            -- Set a universal invisible state before animating
-            pcall(function() child.BackgroundTransparency = 1 end)
-            pcall(function() child.TextTransparency = 1 end)
-            pcall(function() child.ImageTransparency = 1 end)
-        end
-        if child:IsA("UIGradient") then
-            child.Transparency = NumberSequence.new(1)
-        end
+        self.MasterContainer:TweenSize(self.size, "Out", "Linear", 0.15, true)
     end
-
-    -- Animate the main container to its visible state
-    util.tween(self.MasterContainer, {
-        Size = self.size,
-        BackgroundTransparency = 0 -- Main background is always opaque
-    }, 0.3)
-
-    -- Animate all descendants to their intended visible state
-    for _, child in pairs(self.MasterContainer:GetDescendants()) do
-        local props = {}
-        
-        -- Restore background if it's not a layout frame
-        if (child:IsA("Frame") or child:IsA("ImageLabel") or child:IsA("TextButton") or child:IsA("ImageButton") or child:IsA("TextBox")) and child.Name ~= "Container" and child.Name ~= "gap" then
-            props.BackgroundTransparency = 0
-        end
-
-        -- Restore text
-        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("TextBox") then
-            props.TextTransparency = 0
-        end
-
-        -- Restore images
-        if child:IsA("ImageLabel") or child:IsA("ImageButton") then
-            -- Restore glow effects to their semi-transparent state
-            if string.find(child.Name, "Glow") then
-                 props.ImageTransparency = 0.6
-            else
-                 props.ImageTransparency = 0
-            end
-        end
-
-        -- Restore gradients (special case for the button gradient)
-        if child:IsA("UIGradient") and child.Parent.Name == "DropdownboxBackground" then
-            props.Transparency = NumberSequence.new({
-                NumberSequenceKeypoint.new(0, 0),
-                NumberSequenceKeypoint.new(0.5, 0.2),
-                NumberSequenceKeypoint.new(1, 0.5),
-            })
-        end
-
-        -- If we have properties to animate, tween them
-        if next(props) then
-            util.tween(child, props, 0.3)
-        end
+    function library:_HideGUI()
+        self.MasterContainer:TweenSize(UDim2.new(0, self.size.X.Offset, 0, 0), "In", "Linear", 0.15, true)
     end
-end
-
-function library:_HideGUI()
-    -- Animate the main container to its hidden state
-    util.tween(self.MasterContainer, {
-        Size = UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0),
-        BackgroundTransparency = 1
-    }, 0.3)
-    
-    -- Animate all descendants to a universal hidden state
-    for _, child in pairs(self.MasterContainer:GetDescendants()) do
-        local props = {}
-
-        if child:IsA("GuiObject") then
-            -- Check for properties to avoid errors on elements like UILayouts
-            if child:GetPropertyChangedSignal("BackgroundTransparency") then
-                props.BackgroundTransparency = 1
-            end
-            if child:GetPropertyChangedSignal("TextTransparency") then
-                props.TextTransparency = 1
-            end
-            if child:GetPropertyChangedSignal("ImageTransparency") then
-                props.ImageTransparency = 1
-            end
-        end
-
-        if child:IsA("UIGradient") then
-            props.Transparency = NumberSequence.new(1)
-        end
-
-        -- If we have properties to animate, tween them
-        if next(props) then
-            util.tween(child, props, 0.3)
-        end
-    end
-    
-    task.wait(0.3)
-    self.MasterContainer.Visible = false
-end
 
 
     function library:SetKeybind(new)
