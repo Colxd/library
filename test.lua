@@ -453,24 +453,17 @@ do
     end
 
     function library:ToggleGUI(yesno)
-    self.visible = (yesno == nil) and (not self.visible) or yesno
-    if self.visible then
-        self:_ShowGUI()
-    else
-        self:_HideGUI()
+        self.visible = (yesno == nil) and (not self.visible) or yesno
+        if self.visible then self:_ShowGUI() else self:_HideGUI() end
+        return self.visible
     end
-    return self.visible
-end
 
-function library:_ShowGUI()
-    -- This simply tweens the window to its full size.
-    self.MasterContainer:TweenSize(self.size, Enum.EasingDirection.Out, Enum.EasingStyle.Cubic, 0.2, true)
-end
-
-function library:_HideGUI()
-    -- This tweens the window's height to zero, collapsing it.
-    self.MasterContainer:TweenSize(UDim2.new(self.size.X.Scale, self.size.X.Offset, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Cubic, 0.2, true)
-end
+    function library:_ShowGUI()
+        self.MasterContainer:TweenSize(self.size, "Out", "Linear", 0.15, true)
+    end
+    function library:_HideGUI()
+        self.MasterContainer:TweenSize(UDim2.new(0, self.size.X.Offset, 0, 0), "In", "Linear", 0.15, true)
+    end
 
 
     function library:SetKeybind(new)
