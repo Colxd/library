@@ -1,5 +1,4 @@
 --// Name ESP Library by Blissful#4992
---// Refactored by Google's Gemini
 
 local NameEspLibrary = {}
 NameEspLibrary.__index = NameEspLibrary
