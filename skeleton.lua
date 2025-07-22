@@ -284,7 +284,7 @@ end
 
 -- TEST
 if false then
-	-- local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Blissful4992/ESPs/main/UniversalSkeleton.lua"))()
+	-- local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Colxd/library/refs/heads/main/skeleton.lua"))()
 
 	local Skeletons = {}
 	for _, Player in next, game.Players:GetChildren() do
