@@ -1,82 +1,106 @@
---// Name ESP Library by Blissful#4992
 
-local NameEspLibrary = {}
-NameEspLibrary.__index = NameEspLibrary
 
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
+local players = cloneref(game:GetService("Players"))
+local client = players.LocalPlayer
+local camera = workspace.CurrentCamera
 
---// Creates a new Name ESP object for a player
-function NameEspLibrary:New(player, settings)
-    local esp = setmetatable({}, NameEspLibrary)
+getgenv().global = getgenv()
 
-    esp.Player = player
-    esp.Settings = {
-        Color = (settings and settings.Color) or Color3.fromRGB(255, 255, 255),
-        AutoScale = (settings and settings.AutoScale ~= nil) and settings.AutoScale or true,
-        MinSize = (settings and settings.MinSize) or 12,
-        MaxSize = (settings and settings.MaxSize) or 24,
-        YOffset = (settings and settings.YOffset) or 2
-    }
-
-    esp.TextObject = Drawing.new("Text")
-    esp.TextObject.Visible = false
-    esp.TextObject.Center = true
-    esp.TextObject.Outline = true -- Makes text readable on any background
-    esp.TextObject.Font = Drawing.Fonts.Plex -- Changed to a cleaner, more modern font
-    esp.TextObject.Color = esp.Settings.Color
-    esp.TextObject.Size = 15 -- Initial size
-
-    esp.Connection = RunService.RenderStepped:Connect(function()
-        if not esp.Player or not esp.Player.Character or not esp.Player.Character:FindFirstChild("Head") or not esp.Player.Character:FindFirstChildOfClass("Humanoid") or esp.Player.Character:FindFirstChildOfClass("Humanoid").Health <= 0 then
-            esp.TextObject.Visible = false
-            return
-        end
-
-        local head = esp.Player.Character.Head
-        local worldPosition = head.Position + Vector3.new(0, esp.Settings.YOffset, 0)
-        local screenPosition, onScreen = Camera:WorldToViewportPoint(worldPosition)
-
-        if onScreen then
-            esp.TextObject.Visible = true
-            esp.TextObject.Position = Vector2.new(screenPosition.X, screenPosition.Y)
-            esp.TextObject.Text = esp.Player.Name
-
-            if esp.Settings.AutoScale then
-                local distance = (Camera.CFrame.Position - worldPosition).Magnitude
-                local size = math.clamp(1 / distance * 1000, esp.Settings.MinSize, esp.Settings.MaxSize)
-                esp.TextObject.Size = size
-            end
-        else
-            esp.TextObject.Visible = false
-        end
-    end)
-
-    return esp
+function global.declare(self, index, value, check)
+	if self[index] == nil then self[index] = value elseif check then local methods = { "remove", "Disconnect" }; for _, method in methods do pcall(function() value[method](value) end) end end; return self[index]
 end
 
---// Updates the color of the text
-function NameEspLibrary:SetColor(color)
-    if self.TextObject then
-        self.TextObject.Color = color
-    end
+declare(global, "services", {})
+function global.get(service) return services[service] end
+declare(declare(services, "loop", {}), "cache", {})
+
+get("loop").new = function(self, index, func, disabled)
+	if disabled == nil and (func == nil or typeof(func) == "boolean") then disabled = func func = index end
+	self.cache[index] = { ["enabled"] = (not disabled), ["func"] = func, ["toggle"] = function(self, boolean) if boolean == nil then self.enabled = not self.enabled else self.enabled = boolean end end, ["remove"] = function() self.cache[index] = nil end }; return self.cache[index]
 end
 
---// Destroys the ESP object and cleans up connections
-function NameEspLibrary:Destroy()
-    if self.Connection then
-        self.Connection:Disconnect()
-        self.Connection = nil
-    end
-    if self.TextObject then
-        self.TextObject:Remove()
-        self.TextObject = nil
-    end
-    
-    --// Clear table for garbage collection
-    for k, _ in pairs(self) do
-        self[k] = nil
-    end
+declare(get("loop"), "connection", cloneref(game:GetService("RunService")).RenderStepped:Connect(function(delta)
+	for _, loop in get("loop").cache do if loop.enabled then local success, result = pcall(function() loop.func(delta) end); if not success then warn(result) end end end
+end), true)
+
+declare(services, "new", {})
+get("new").drawing = function(class, properties)
+	local drawing = Drawing.new(class); for property, value in properties do pcall(function() drawing[property] = value end) end; return drawing
 end
 
-return NameEspLibrary
+declare(declare(services, "player", {}), "cache", {})
+get("player").find = function(self, player) for character, data in self.cache do if data.player == player then return character end end end
+get("player").check = function(self, player)
+	local success, check = pcall(function() local character = player:IsA("Player") and player.Character or player; local children = { character.Humanoid, character.HumanoidRootPart }; return children and character.Parent ~= nil end); return success and check
+end
+
+get("player").new = function(self, player)
+	local function cache(character)
+		self.cache[character] = { ["player"] = player, ["drawings"] = { ["name"] = get("new").drawing("Text", { Visible = false, Center = true, Font = Drawing.Fonts.Plex }) } }
+	end
+	local function check(character) if self:check(character) then cache(character) else local listener; listener = character.ChildAdded:Connect(function() if self:check(character) then cache(character) listener:Disconnect() end end) end end
+	if player.Character then check(player.Character) end; player.CharacterAdded:Connect(check)
+end
+
+get("player").remove = function(self, player)
+	if player:IsA("Player") then local character = self:find(player); if character then self:remove(character) end
+	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in drawings do drawing:Remove() end end
+end
+
+get("player").update = function(self, character, data)
+	if not self:check(character) then self:remove(character) end
+	local player = data.player; local root = character.HumanoidRootPart; local drawings = data.drawings
+	if self:check(client) then data.distance = (client.Character.HumanoidRootPart.CFrame.Position - root.CFrame.Position).Magnitude end
+
+	task.spawn(function()
+		local position, visible = camera:WorldToViewportPoint(root.CFrame.Position)
+		local visuals = features.visuals
+		local function check() local team; if visuals.teamCheck then team = player.Team ~= client.Team else team = true end; return visuals.enabled and data.distance and data.distance <= visuals.renderDistance and team end
+		local function color(color) if visuals.teamColor then color = player.TeamColor.Color end; return color end
+
+		if visible and check() then
+			local scale = 1 / (position.Z * math.tan(math.rad(camera.FieldOfView * 0.5)) * 2) * 1000
+			local height = math.floor(6 * scale); local y = math.floor(position.Y); local x = math.floor(position.X)
+			local yPostion = math.floor((y - height * 0.5) + (0.5 * scale))
+
+			drawings.name.Text = `[ {player.Name} ]`
+			drawings.name.Size = math.max(math.min(math.abs(12.5 * scale), 12.5), 10)
+			drawings.name.Position = Vector2.new(x, (yPostion - drawings.name.TextBounds.Y) - 2)
+			drawings.name.Color = color(visuals.names.color)
+			drawings.name.Outline = visuals.names.outline.enabled
+			drawings.name.OutlineColor = visuals.names.outline.color
+		end
+		drawings.name.Visible = (check() and visible and visuals.names.enabled)
+	end)
+end
+
+declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true)) -- Starts disabled
+declare(global, "features", {})
+
+features.toggle = function(self, feature, boolean)
+	if self[feature] then
+		local enabled = if boolean == nil then not self[feature].enabled else boolean
+		self[feature].enabled = enabled
+		get("player").loop:toggle(enabled)
+
+		--// [FIX] If disabling, iterate through all drawings and hide them.
+		if not enabled then
+			for _, data in get("player").cache do
+				for _, drawing in data.drawings do
+					drawing.Visible = false
+				end
+			end
+		end
+	end
+end
+
+declare(features, "visuals", {
+	["enabled"] = false, ["teamCheck"] = false, ["teamColor"] = true, ["renderDistance"] = 2000,
+	["names"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(255, 255, 255), ["outline"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(0, 0, 0) } }
+})
+
+for _, player in players:GetPlayers() do if player ~= client and not get("player"):find(player) then get("player"):new(player) end end
+declare(get("player"), "added", players.PlayerAdded:Connect(function(player) get("player"):new(player) end), true)
+declare(get("player"), "removing", players.PlayerRemoving:Connect(function(player) get("player"):remove(player) end), true)
+
+return features
