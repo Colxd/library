@@ -91,11 +91,17 @@ declare(global, "features", {})
 
 features.toggle = function(self, feature, boolean)
 	if self[feature] then
-		local enabled = if boolean == nil then not self[feature].enabled else boolean
+        -- [FIX] Use a more compatible if/else block
+		local enabled
+		if boolean == nil then
+			enabled = not self[feature].enabled
+		else
+			enabled = boolean
+		end
+
 		self[feature].enabled = enabled
 		get("player").loop:toggle(enabled)
 
-		--// [FIX] If disabling, iterate through all drawings and hide them.
 		if not enabled then
 			for _, data in get("player").cache do
 				for _, drawing in data.drawings do
@@ -107,7 +113,7 @@ features.toggle = function(self, feature, boolean)
 end
 
 declare(features, "visuals", {
-	["enabled"] = false, ["teamCheck"] = false, ["renderDistance"] = 2000,
+	["enabled"] = false, ["teamCheck"] = false, ["teamColor"] = true, ["renderDistance"] = 2000,
 	["health"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(0, 255, 0), ["colorLow"] = Color3.fromRGB(255, 0, 0), ["outline"] = { ["enabled"] = true, ["color"] = Color3.fromRGB(0, 0, 0) }, ["text"] = { ["enabled"] = true, ["outline"] = { ["enabled"] = true } } }
 })
 
