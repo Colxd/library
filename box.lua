@@ -1,10 +1,7 @@
--- Save this code as box.lua and upload to GitHub
+
 local BoxLib = {}
 
---[[
-    Creates a new ESP box object for a specific player.
-    The object handles its own drawing, updating, and cleanup.
-]]
+
 function BoxLib:New(player)
     local box = {}
 
