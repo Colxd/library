@@ -1,4 +1,5 @@
 
+
 local players = cloneref(game:GetService("Players"))
 local client = players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -43,7 +44,7 @@ end
 
 get("player").remove = function(self, player)
 	if player:IsA("Player") then local character = self:find(player); if character then self:remove(character) end
-	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in pairs(drawings) do drawing:Remove() end end
+	else local drawings = self.cache[player].drawings; self.cache[player] = nil; for _, drawing in drawings do drawing:Remove() end end
 end
 
 get("player").update = function(self, character, data)
@@ -69,26 +70,17 @@ get("player").update = function(self, character, data)
 			drawings.boxFilled.Transparency = visuals.boxes.filled.transparency
 			drawings.boxFilled.ZIndex = -2
 		end
-		if drawings.boxFilled then drawings.boxFilled.Visible = (check() and visible and visuals.boxes.filled.enabled) end
+		drawings.boxFilled.Visible = (check() and visible and visuals.boxes.filled.enabled)
 	end)
 end
 
-declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true))
+declare(get("player"), "loop", get("loop"):new(function () for character, data in get("player").cache do get("player"):update(character, data) end end, true)) -- Starts disabled
 declare(global, "features", {})
 
 features.toggle = function(self, feature, boolean)
 	if self[feature] then
-		local enabled; if boolean == nil then enabled = not self[feature].enabled else enabled = boolean end
-		self[feature].enabled = enabled
-		get("player").loop:toggle(enabled)
-		if not enabled then
-			for _, data in pairs(get("player").cache) do
-                -- [FIX] Use pairs() to iterate correctly
-				for _, drawing in pairs(data.drawings) do
-					drawing.Visible = false
-				end
-			end
-		end
+		if boolean == nil then self[feature].enabled = not self[feature].enabled else self[feature].enabled = boolean end
+		get("player").loop:toggle(self[feature].enabled)
 	end
 end
 
